@@ -1,0 +1,51 @@
+# ---------------------------
+# Python
+# ---------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# ---------------------------
+# Environment variables
+# ---------------------------
+.env
+
+# ---------------------------
+# Google credentials (VERY IMPORTANT)
+# ---------------------------
+credentials.json
+*.json
+
+# (optional safety: if you store any service account keys)
+*.service-account.json
+
+# ---------------------------
+# Logs
+# ---------------------------
+*.log
+discord.log
+
+# ---------------------------
+# OS files
+# ---------------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------------
+# IDE / Editor
+# ---------------------------
+.vscode/
+.idea/
+*.swp
+
+# ---------------------------
+# Cache / misc
+# ---------------------------
+.cache/
