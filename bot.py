@@ -43,6 +43,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# prevent duplicate processing
 processed_users = set()
 
 # ---------------------------
@@ -74,7 +75,7 @@ def get_member_data():
     return cleaned
 
 # ---------------------------
-# SYNC LOOP
+# SYNC LOOP (ONLY UPGRADES)
 # ---------------------------
 
 @tasks.loop(minutes=2)
@@ -94,7 +95,6 @@ async def sync_users():
         s1_role = discord.utils.get(guild.roles, name="New-Generation")
         s3_role = discord.utils.get(guild.roles, name="Worst-Generation")
 
-        # ---------------- NEW FACTIONS ----------------
         faction_roles = [
             discord.utils.get(guild.roles, name="rock-pirates"),
             discord.utils.get(guild.roles, name="roger-pirates"),
@@ -102,7 +102,6 @@ async def sync_users():
             discord.utils.get(guild.roles, name="redhair-pirates"),
             discord.utils.get(guild.roles, name="blackbeard-pirates"),
             discord.utils.get(guild.roles, name="straw_hat-pirates"),
-
             discord.utils.get(guild.roles, name="seraphim"),
             discord.utils.get(guild.roles, name="cross-guild"),
             discord.utils.get(guild.roles, name="germa-66"),
@@ -115,11 +114,15 @@ async def sync_users():
 
         faction_roles = [r for r in faction_roles if r is not None]
 
-        log = discord.utils.get(guild.text_channels, name="bot-logs")
+        log = guild.get_channel(LOG_CHANNEL_ID)
 
         for member in guild.members:
 
-            if unverified not in member.roles:
+            if member.bot:
+                continue
+
+            # ONLY process users who already have Unverified
+            if not unverified or unverified not in member.roles:
                 continue
 
             match = next(
@@ -130,30 +133,32 @@ async def sync_users():
             if not match:
                 continue
 
+            # ---------------------------
+            # UPGRADE USER
+            # ---------------------------
             await safe_remove_role(member, unverified)
 
             year = match["year"]
 
-            # ---------------- YEAR ROLES ----------------
             if year == "S1":
-                await safe_add_role(member, discord.utils.get(member.guild.roles, name="New-Generation"))
+                await safe_add_role(member, s1_role)
+
+                # assign faction ONLY for S1
+                existing_faction = next(
+                    (r for r in member.roles if r in faction_roles),
+                    None
+                )
+
+                if not existing_faction and faction_roles:
+                    sizes = [len(r.members) for r in faction_roles]
+                    chosen = faction_roles[sizes.index(min(sizes))]
+                    await safe_add_role(member, chosen)
 
             elif year == "S3":
-                await safe_add_role(member, discord.utils.get(member.guild.roles, name="Worst-Generation"))
-
-            # ---------------- FACTION LOGIC (UNCHANGED) ----------------
-            existing_faction = next(
-                (r for r in member.roles if "faction" in r.name.lower()),
-                None
-            )
-
-            if not existing_faction and faction_roles:
-                sizes = [len(r.members) for r in faction_roles]
-                chosen = faction_roles[sizes.index(min(sizes))]
-                await safe_add_role(member, chosen)
+                await safe_add_role(member, s3_role)
 
             if log:
-                await log.send(f"🔄 Sync updated: {member.name}")
+                await log.send(f"🔄 Sync verified: {member.name}")
 
 # ---------------------------
 # READY
@@ -165,11 +170,14 @@ async def on_ready():
     sync_users.start()
 
 # ---------------------------
-# JOIN EVENT
+# JOIN EVENT (ONLY ENTRY POINT)
 # ---------------------------
 
 @bot.event
 async def on_member_join(member):
+
+    if member.bot:
+        return
 
     if member.id in processed_users:
         return
@@ -181,14 +189,12 @@ async def on_member_join(member):
     s3_role = discord.utils.get(guild.roles, name="Worst-Generation")
 
     faction_roles = [
-
         discord.utils.get(guild.roles, name="rock-pirates"),
         discord.utils.get(guild.roles, name="roger-pirates"),
         discord.utils.get(guild.roles, name="whitebeard-pirates"),
         discord.utils.get(guild.roles, name="redhair-pirates"),
         discord.utils.get(guild.roles, name="blackbeard-pirates"),
         discord.utils.get(guild.roles, name="straw_hat-pirates"),
-
         discord.utils.get(guild.roles, name="seraphim"),
         discord.utils.get(guild.roles, name="cross-guild"),
         discord.utils.get(guild.roles, name="germa-66"),
@@ -201,7 +207,7 @@ async def on_member_join(member):
 
     faction_roles = [r for r in faction_roles if r is not None]
 
-    log = discord.utils.get(guild.text_channels, name="join-logs")
+    log = guild.get_channel(LOG_CHANNEL_ID)
 
     data = get_member_data()
 
@@ -210,7 +216,9 @@ async def on_member_join(member):
         None
     )
 
-    # ---------------- NOT REGISTERED ----------------
+    # ---------------------------
+    # NOT REGISTERED
+    # ---------------------------
     if not match:
 
         await safe_add_role(member, unverified)
@@ -221,7 +229,7 @@ f"""🏴‍☠️ Ahoy, Wanderer!
 
 We couldn’t find your AMFOSS registration ⚓
 
-📜 Fill form → Rejoin → Get assigned
+📜 Fill form → Leave → Rejoin
 
 Contact:
 <@{RUFINE_ID}> / <@{SAHARSH_ID}>"""
@@ -234,28 +242,26 @@ Contact:
 
         return
 
-    # ---------------- REGISTERED ----------------
+    # ---------------------------
+    # REGISTERED
+    # ---------------------------
+
     await safe_remove_role(member, unverified)
 
     year = match["year"]
 
     if year == "S1":
         await safe_add_role(member, s1_role)
-    elif year == "S3":
-        await safe_add_role(member, s3_role)
 
-    existing_faction = next(
-        (r for r in member.roles if "faction" in r.name.lower()),
-        None
-    )
-
-    if not existing_faction and faction_roles:
         sizes = [len(r.members) for r in faction_roles]
         chosen = faction_roles[sizes.index(min(sizes))]
         await safe_add_role(member, chosen)
+
         faction_name = chosen.name
-    else:
-        faction_name = existing_faction.name if existing_faction else "Unknown"
+
+    elif year == "S3":
+        await safe_add_role(member, s3_role)
+        faction_name = "Worst-Generation (S3)"
 
     processed_users.add(member.id)
 
