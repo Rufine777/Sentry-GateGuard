@@ -108,8 +108,8 @@ async def sync_users():
             discord.utils.get(guild.roles, name="cipher-pol"),
             discord.utils.get(guild.roles, name="sword"),
             discord.utils.get(guild.roles, name="pacifista"),
-            discord.utils.get(guild.roles, name="galley-la-company"),
-            discord.utils.get(guild.roles, name="akazaya-nine"),
+            discord.utils.get(guild.roles, name="heart-pirates"),
+            discord.utils.get(guild.roles, name="kid-pirates"),
         ]
 
         faction_roles = [r for r in faction_roles if r is not None]
@@ -201,8 +201,8 @@ async def on_member_join(member):
         discord.utils.get(guild.roles, name="cipher-pol"),
         discord.utils.get(guild.roles, name="sword"),
         discord.utils.get(guild.roles, name="pacifista"),
-        discord.utils.get(guild.roles, name="galley-la-company"),
-        discord.utils.get(guild.roles, name="akazaya-nine"),
+        discord.utils.get(guild.roles, name="heart-pirates"),
+        discord.utils.get(guild.roles, name="kid-pirates"),
     ]
 
     faction_roles = [r for r in faction_roles if r is not None]
